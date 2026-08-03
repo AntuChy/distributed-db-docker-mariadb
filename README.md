@@ -41,8 +41,8 @@ We implemented **horizontal fragmentation**: rows of a `customers` table were sp
 
 ```text
                  ┌──────────────────────────────────────────────┐
-                 │         Docker Network: distdb-net           │
-                 │              (Bridge Network)                │
+                 │          Docker Network: distdb-net          │
+                 │               (Bridge Network)               │
                  └──────────────────────────────────────────────┘
                                │
               ┌────────────────┴────────────────┐
@@ -50,34 +50,31 @@ We implemented **horizontal fragmentation**: rows of a `customers` table were sp
       ┌───────▼────────┐                ┌───────▼────────┐
       │  PC1 (MariaDB) │                │  PC2 (MariaDB) │
       │  Port: 3316    │                │  Port: 3307    │
-      │  (3306 inside) │                │  (3306 inside) │
+      │ (3306 inside)  │                │ (3306 inside)  │
       └────────────────┘                └────────────────┘
               │                                 │
               │                                 │
       ┌──────────────────┐              ┌──────────────────┐
       │ customers_dhaka  │              │ customers_ctg    │
-      │ (Real Table)     │              │ (Real Table)     │
+      │   (Real Table)   │              │   (Real Table)   │
       └──────────────────┘              └──────────────────┘
               │
-              │  FEDERATED Link
-              ├──────────────────────────────────────────────►
               │
       ┌─────────────────────┐
-      │ customers_ctg_link  │
-      │ (FEDERATED Table)   │
-      └─────────────────────┘
+      │ customers_ctg_link  │──────────────────────────────►
+      │  (FEDERATED Table)  │   Connects to customers_ctg
+      └─────────────────────┘        on PC2
               │
               ▼
       ┌─────────────────────┐
       │ customers_global    │
-      │       VIEW          │
-      │─────────────────────│
+      │       (VIEW)        │
+      ├─────────────────────┤
       │ customers_dhaka     │
-      │ UNION ALL           │
+      │      UNION ALL      │
       │ customers_ctg_link  │
       └─────────────────────┘
 ```
-
 We chose **Docker containers** instead of two physical PCs on a LAN because Docker's internal DNS (container name resolution: `pc1`, `pc2`) eliminates the need for IP address management, port forwarding across a real router, and Windows Firewall configuration — all of which caused significant friction when first attempting this on real hardware over Wi-Fi/LAN.
 
 \---
