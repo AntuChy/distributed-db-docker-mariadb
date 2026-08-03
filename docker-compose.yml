@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  pc1:
+    image: mariadb:10.11
+    container_name: pc1
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: company_db
+      MYSQL_USER: fed_user
+      MYSQL_PASSWORD: YourPassword123
+    ports:
+      - "3316:3306"
+    volumes:
+      - ./pc1-config/federated.cnf:/etc/mysql/conf.d/federated.cnf
+    networks:
+      - distdb-net
+
+  pc2:
+    image: mariadb:10.11
+    container_name: pc2
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: company_db
+      MYSQL_USER: fed_user
+      MYSQL_PASSWORD: YourPassword123
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./pc2-config/federated.cnf:/etc/mysql/conf.d/federated.cnf
+    networks:
+      - distdb-net
+
+networks:
+  distdb-net:
+    driver: bridge
