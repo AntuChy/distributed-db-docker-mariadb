@@ -74,6 +74,7 @@ We implemented **horizontal fragmentation**: rows of a `customers` table were sp
       │      UNION ALL      │
       │ customers_ctg_link  │
       └─────────────────────┘
+
 ```
 We chose **Docker containers** instead of two physical PCs on a LAN because Docker's internal DNS (container name resolution: `pc1`, `pc2`) eliminates the need for IP address management, port forwarding across a real router, and Windows Firewall configuration — all of which caused significant friction when first attempting this on real hardware over Wi-Fi/LAN.
 
