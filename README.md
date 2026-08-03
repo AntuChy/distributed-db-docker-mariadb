@@ -3,6 +3,7 @@
 **Author:** Antu Chowdhury
 
 **Topic:** Building a Simple Distributed Database using Data Fragmentation
+
 **Tools Used:** Docker Desktop, MariaDB 10.11 (via Docker), FEDERATED/FederatedX Storage Engine
 
 > \*\*Note:\*\* All passwords in this report (`<root\_password>`, `<db\_password>`) are placeholders. Replace them with your own values before running any command — do not use literal angle-bracket text as a real password.
