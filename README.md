@@ -37,27 +37,45 @@ We implemented **horizontal fragmentation**: rows of a `customers` table were sp
 
 \---
 
-## 3\. Architecture
+## 3. Architecture
 
-```
-                 ┌─────────────────────────────┐
-                 │     Docker Network:          │
-                 │     distdb-net (bridge)      │
-                 │                               │
-   ┌─────────────┴──────────┐    ┌───────────────┴─────────────┐
-   │   pc1 (MariaDB)         │    │   pc2 (MariaDB)              │
-   │   Host port: 3316       │    │   Host port: 3307             │
-   │   Internal port: 3306   │    │   Internal port: 3306         │
-   │                          │    │                               │
-   │  customers\_dhaka (real) │    │  customers\_ctg (real)         │
-   │  customers\_ctg\_link ────┼────┼─► points to customers\_ctg     │
-   │   (FEDERATED proxy)     │    │                               │
-   │                          │    │                               │
-   │  customers\_global (VIEW)│    │                               │
-   │  = customers\_dhaka      │    │                               │
-   │    UNION ALL             │    │                               │
-   │    customers\_ctg\_link    │    │                               │
-   └──────────────────────────┘    └───────────────────────────────┘
+```text
+                 ┌──────────────────────────────────────────────┐
+                 │         Docker Network: distdb-net           │
+                 │              (Bridge Network)                │
+                 └──────────────────────────────────────────────┘
+                               │
+              ┌────────────────┴────────────────┐
+              │                                 │
+      ┌───────▼────────┐                ┌───────▼────────┐
+      │  PC1 (MariaDB) │                │  PC2 (MariaDB) │
+      │  Port: 3316    │                │  Port: 3307    │
+      │  (3306 inside) │                │  (3306 inside) │
+      └────────────────┘                └────────────────┘
+              │                                 │
+              │                                 │
+      ┌──────────────────┐              ┌──────────────────┐
+      │ customers_dhaka  │              │ customers_ctg    │
+      │ (Real Table)     │              │ (Real Table)     │
+      └──────────────────┘              └──────────────────┘
+              │
+              │  FEDERATED Link
+              ├──────────────────────────────────────────────►
+              │
+      ┌─────────────────────┐
+      │ customers_ctg_link  │
+      │ (FEDERATED Table)   │
+      └─────────────────────┘
+              │
+              ▼
+      ┌─────────────────────┐
+      │ customers_global    │
+      │       VIEW          │
+      │─────────────────────│
+      │ customers_dhaka     │
+      │ UNION ALL           │
+      │ customers_ctg_link  │
+      └─────────────────────┘
 ```
 
 We chose **Docker containers** instead of two physical PCs on a LAN because Docker's internal DNS (container name resolution: `pc1`, `pc2`) eliminates the need for IP address management, port forwarding across a real router, and Windows Firewall configuration — all of which caused significant friction when first attempting this on real hardware over Wi-Fi/LAN.
@@ -390,94 +408,89 @@ Shows how the optimizer treats the FEDERATED-backed portions differently from pu
 
 \---
 
-## 6\. Errors Encountered \& Solutions (Full Troubleshooting Log)
+## 6. Errors Encountered & Solutions (Full Troubleshooting Log)
 
-### 6.1 `Got error 176 "Read page with wrong checksum" from storage engine Aria`
+### 6.1 `Virtualization support not detected` (Docker Desktop startup error)
 
-* **Context:** Happened on the original XAMPP MySQL (before moving to Docker).
-* **Cause:** Corrupted Aria storage engine log files, almost always from an unclean shutdown (crash, force-close, power loss).
-* **Solution:**
+- **Cause:** Hardware virtualization (Intel VT-x) disabled in BIOS.
+- **Solution:**
+  1. Task Manager → **Performance** → **CPU** → check whether **Virtualization** is Enabled.
+  2. If Disabled: Restart → enter BIOS (Lenovo: **F1** or **F2**) → **Security** → **Intel Virtualization Technology (VT-x)** → **Enabled** → Save & Exit (**F10**).
+  3. Enable Windows features: **Virtual Machine Platform** and **Windows Subsystem for Linux**.
+  4. Run `wsl --update` in an Administrator terminal.
 
-  1. Back up `C:\\xampp\\mysql\\data`
-  2. Stop MySQL
-  3. Rename `aria\_log\_control` and all `aria\_log.000000X` files to `.bak`
-  4. Restart MySQL — fresh logs auto-generate
-  5. If needed, run `mysqlcheck -u user -p --auto-repair --all-databases`
+### 6.2 `failed to connect to the Docker API at npipe:////./pipe/docker_engine`
 
-### 6.2 `Virtualization support not detected` (Docker Desktop startup error)
+- **Cause:** Docker Desktop was not running.
+- **Solution:** Launch Docker Desktop, wait until it finishes starting, and then retry the command.
 
-* **Cause:** Hardware virtualization (Intel VT-x) disabled in BIOS.
-* **Solution:**
+### 6.3 `Server: ERROR: request returned 500 Internal Server Error ... dockerDesktopLinuxEngine`
 
-  1. Task Manager → Performance → CPU → check if "Virtualization" says Enabled/Disabled
-  2. If Disabled: restart → enter BIOS (Lenovo: F1 or F2) → **Security tab** → find **Intel Virtualization Technology (VT-x)** → set to **Enabled** → Save \& Exit (F10)
-  3. Also enable Windows features: `optionalfeatures` → check **Virtual Machine Platform** and **Windows Subsystem for Linux** → restart
-  4. Run `wsl --update` in an Administrator terminal afterward
+- **Cause:** WSL2 backend failed to initialize correctly.
+- **Solution:**
+  1. Restart Docker Desktop.
+  2. Run `wsl --shutdown`.
+  3. Run `wsl --update` and restart the PC.
+  4. Ensure **Use the WSL 2 based engine** is enabled.
+  5. If necessary, reset Docker Desktop to factory defaults.
 
-### 6.3 `failed to connect to the docker API at npipe:////./pipe/docker\_engine`
+### 6.4 `Ports are not available ... bind: Only one usage of each socket address is normally permitted`
 
-* **Cause:** Docker Desktop application isn't actually running yet — the CLI exists but the engine backend isn't started.
-* **Solution:** Launch Docker Desktop from the Start menu, wait for the whale icon in the system tray to go steady (not spinning), then retry.
+- **Cause:** Host port **3306** was already in use by XAMPP MySQL.
+- **Solution:** Change the host port mapping in `docker-compose.yml` (e.g., `3316:3306`) while keeping the container port as `3306`.
 
-### 6.4 `Server: ERROR: request returned 500 Internal Server Error ... dockerDesktopLinuxEngine`
+### 6.5 `ERROR 1286 (42000): Unknown storage engine 'FEDERATED'`
 
-* **Cause:** WSL2 backend failed to initialize properly (often right after fixing the virtualization issue, before a full restart cycle completed).
-* **Solution (in order of escalation):**
-
-  1. Fully quit Docker Desktop (tray icon → Quit) and reopen it
-  2. `wsl --shutdown` (as Administrator) then reopen Docker Desktop
-  3. `wsl --update` (as Administrator), then restart the PC
-  4. Docker Desktop → Settings → General → confirm "Use the WSL 2 based engine" is checked
-  5. Last resort: Docker Desktop → Settings → Troubleshoot → "Reset to factory defaults"
-
-### 6.5 `ports are not available: exposing port TCP 0.0.0.0:3306 ... bind: Only one usage of each socket address is normally permitted`
-
-* **Cause:** Port 3306 on the host machine was already occupied — by the original XAMPP MySQL service still running in the background.
-* **Solution:** Remap the **host-side** port only in `docker-compose.yml` (left number in `"3316:3306"`), leaving the container-internal port at `3306`. XAMPP and Docker can then coexist without conflict.
-
-### 6.6 `ERROR 1286 (42000): Unknown storage engine 'FEDERATED'`
-
-* **Cause:** In MariaDB, this engine is actually called **FederatedX**, and it is *not* auto-enabled just by adding `federated` to a `.cnf` config file the way one might expect. It must be explicitly loaded as a plugin.
-* **Solution:** Connect as root and run:
+- **Cause:** MariaDB uses the **FederatedX** plugin, which must be loaded manually.
+- **Solution:**
 
 ```sql
-  INSTALL SONAME 'ha\_federatedx';
-  ```
-
-  Then confirm with `SHOW ENGINES;` — look for `FEDERATED` with `Support: YES`. Must be repeated on **both** nodes if both will ever host a FEDERATED link table. This needs to be re-run only if the container's data volume is wiped (e.g. `docker-compose down -v`).
-
-### 6.7 `ERROR 1064 (42000): You have an error in your SQL syntax ... near 'docker exec -it pc2...'`
-
-* **Cause:** Typed a `docker exec` (Windows/Docker) command while still inside the MariaDB SQL prompt. MariaDB tried to interpret it as SQL.
-* **Solution:** Always check which prompt is active before typing:
-
-  * `MariaDB \[company\_db]>` → SQL only, statements end in `;`
-  * `C:\\Users\\...>` → Windows Command Prompt, `docker ...` commands only
-Type `exit;` inside MariaDB to return to Command Prompt before running any `docker` command.
-
-### 6.8 MariaDB prompt "stuck" waiting for more input (shows `->` repeatedly)
-
-* **Cause:** A statement was started but never terminated with `;`, so MariaDB keeps waiting for the rest of it (this happens if a `docker exec ...` line gets typed into the SQL prompt by mistake).
-* **Solution:** Type `\\c` and press Enter to clear the pending statement and reset the prompt cleanly.
-
-### 6.9 `'SELECT' is not recognized as an internal or external command`
-
-* **Cause:** The reverse of 6.7 — typing a SQL command into regular Windows Command Prompt instead of inside MariaDB. Often happens because a `docker exec -it ... mysql ...` session (without `-e "..."`) closes back to Command Prompt right after its one command finishes.
-* **Solution:** Reconnect with `docker exec -it pc1 mysql -u fed\_user -p<db\_password> company\_db` and confirm the prompt shows `MariaDB \[company\_db]>` before typing SQL. Alternatively, use the one-shot form for single queries:
-
+INSTALL SONAME 'ha_federatedx';
 ```
-  docker exec -it pc2 mysql -u fed\_user -p<db\_password> company\_db -e "SELECT \* FROM customers\_ctg;"
-  ```
 
-  which runs, prints, and exits automatically — no manual `exit` needed after.
+Then verify using:
 
-### 6.10 `Warning: World-writable config file '/etc/mysql/conf.d/federated.cnf' is ignored`
+```sql
+SHOW ENGINES;
+```
 
-* **Cause:** Windows file permissions on the mounted `.cnf` file are more permissive than Linux expects (cosmetic issue from bind-mounting a Windows file into a Linux container).
-* **Solution:** Harmless — can be ignored. Since the FEDERATED engine is actually enabled via `INSTALL SONAME` (SQL command) rather than this config file, the warning has no functional impact.
+Repeat on each database node if needed.
 
-\---
+### 6.6 `ERROR 1064 (42000): You have an error in your SQL syntax ... near 'docker exec -it ...'`
 
+- **Cause:** A Docker command was entered inside the MariaDB SQL prompt.
+- **Solution:** Run Docker commands only from the terminal. Type `exit;` to leave the MariaDB prompt before executing Docker commands.
+
+### 6.7 MariaDB prompt continuously shows `->`
+
+- **Cause:** An SQL statement was started but not terminated with `;`.
+- **Solution:** Type:
+
+```sql
+\c
+```
+
+to cancel the current statement.
+
+### 6.8 `'SELECT' is not recognized as an internal or external command`
+
+- **Cause:** An SQL command was executed from the Windows Command Prompt instead of the MariaDB shell.
+- **Solution:** Reconnect to MariaDB using:
+
+```bash
+docker exec -it pc1 mysql -u fed_user -p company_db
+```
+
+or execute a single query using:
+
+```bash
+docker exec -it pc2 mysql -u fed_user -p company_db -e "SELECT * FROM customers_ctg;"
+```
+
+### 6.9 `Warning: World-writable config file '/etc/mysql/conf.d/federated.cnf' is ignored`
+
+- **Cause:** Windows file permissions on the mounted configuration file are more permissive than Linux expects.
+- **Solution:** This warning is harmless and can be ignored because the FEDERATED engine is enabled using `INSTALL SONAME`, not through the configuration file.
 ## 7\. Key Command Reference (Cheat Sheet)
 
 ```
