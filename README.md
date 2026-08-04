@@ -1,4 +1,4 @@
-check full md here: why \ in every  thinf remove it:
+
 # Distributed Database Environment using Docker + MariaDB (FEDERATED Engine)
 
 **Author:** Antu Chowdhury
