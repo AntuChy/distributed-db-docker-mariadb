@@ -1,3 +1,4 @@
+check full md here: why \ in every  thinf remove it:
 # Distributed Database Environment using Docker + MariaDB (FEDERATED Engine)
 
 **Author:** Antu Chowdhury
@@ -6,17 +7,17 @@
 
 **Tools Used:** Docker Desktop, MariaDB 10.11 (via Docker), FEDERATED/FederatedX Storage Engine
 
-> \*\*Note:\*\* All passwords in this report (`<root\_password>`, `<db\_password>`) are placeholders. Replace them with your own values before running any command — do not use literal angle-bracket text as a real password.
+> **Note:** All passwords in this report (`<root_password>`, `<db_password>`) are placeholders. Replace them with your own values before running any command — do not use literal angle-bracket text as a real password.
 
-\---
+---
 
-## 1\. Objective
+## 1. Objective
 
 To design and implement a simple **distributed database environment** demonstrating **horizontal data fragmentation** across two independent database nodes, queried transparently as a single logical database — without the client needing to know where each piece of data physically resides.
 
-\---
+---
 
-## 2\. Core Concept: What "Distributed Database" Means Here
+## 2. Core Concept: What "Distributed Database" Means Here
 
 A distributed database is not simply "two databases that talk to each other" — the defining property is **transparency**. A user or application should be able to run one query and get correct results, regardless of which physical node actually stores each row.
 
@@ -32,10 +33,10 @@ We implemented **horizontal fragmentation**: rows of a `customers` table were sp
 ### Key DBMS terms demonstrated
 
 * **Fragmentation** — splitting a table's rows (horizontal) or columns (vertical) across nodes.
-* **Transparency** — the client queries `customers\_global` and doesn't need to know 2 of the rows come from a completely different server.
+* **Transparency** — the client queries `customers_global` and doesn't need to know 2 of the rows come from a completely different server.
 * **FEDERATED / FederatedX Engine** — a MariaDB storage engine that creates a *local proxy table* pointing at a table on a remote server. Reading/writing to the proxy table transparently forwards the operation to the remote server via MySQL's client protocol (`libmysql`).
 
-\---
+---
 
 ## 3. Architecture
 
@@ -78,9 +79,9 @@ We implemented **horizontal fragmentation**: rows of a `customers` table were sp
 ```
 We chose **Docker containers** instead of two physical PCs on a LAN because Docker's internal DNS (container name resolution: `pc1`, `pc2`) eliminates the need for IP address management, port forwarding across a real router, and Windows Firewall configuration — all of which caused significant friction when first attempting this on real hardware over Wi-Fi/LAN.
 
-\---
+---
 
-## 4\. Full Setup — Step by Step
+## 4. Full Setup — Step by Step
 
 ### 4.1 Prerequisites
 
@@ -105,12 +106,12 @@ version: '3.8'
 services:
   pc1:
     image: mariadb:10.11
-    container\_name: pc1
+    container_name: pc1
     environment:
-      MYSQL\_ROOT\_PASSWORD: <root\_password>
-      MYSQL\_DATABASE: company\_db
-      MYSQL\_USER: fed\_user
-      MYSQL\_PASSWORD: <db\_password>
+      MYSQL_ROOT_PASSWORD: <root_password>
+      MYSQL_DATABASE: company_db
+      MYSQL_USER: fed_user
+      MYSQL_PASSWORD: <db_password>
     ports:
       - "3316:3306"
     volumes:
@@ -120,12 +121,12 @@ services:
 
   pc2:
     image: mariadb:10.11
-    container\_name: pc2
+    container_name: pc2
     environment:
-      MYSQL\_ROOT\_PASSWORD: <root\_password>
-      MYSQL\_DATABASE: company\_db
-      MYSQL\_USER: fed\_user
-      MYSQL\_PASSWORD: <db\_password>
+      MYSQL_ROOT_PASSWORD: <root_password>
+      MYSQL_DATABASE: company_db
+      MYSQL_USER: fed_user
+      MYSQL_PASSWORD: <db_password>
     ports:
       - "3307:3306"
     volumes:
@@ -138,7 +139,7 @@ networks:
     driver: bridge
 ```
 
-> \*\*Note:\*\* Host ports (left side of `3316:3306`) had to be changed from the default `3306` because a local XAMPP MySQL install was already using it on the host machine. The \*\*internal\*\* port (right side, `3306`) stays standard — that's what containers use to reach each other, and it's what matters for the FEDERATED connection string.
+> **Note:** Host ports (left side of `3316:3306`) had to be changed from the default `3306` because a local XAMPP MySQL install was already using it on the host machine. The **internal** port (right side, `3306`) stays standard — that's what containers use to reach each other, and it's what matters for the FEDERATED connection string.
 
 ### 4.4 Launch containers
 
@@ -152,11 +153,11 @@ docker ps          # confirm both pc1 and pc2 show "Up"
 On **each** container:
 
 ```
-docker exec -it pc1 mysql -u root -p<root\_password>
+docker exec -it pc1 mysql -u root -p<root_password>
 ```
 
 ```sql
-INSTALL SONAME 'ha\_federatedx';
+INSTALL SONAME 'ha_federatedx';
 SHOW ENGINES;   -- confirm FEDERATED shows Support: YES
 ```
 
@@ -164,30 +165,30 @@ Repeat for `pc2`.
 
 ### 4.6 Create the data fragments
 
-**On pc1** (`docker exec -it pc1 mysql -u fed\_user -p<db\_password> company\_db`):
+**On pc1** (`docker exec -it pc1 mysql -u fed_user -p<db_password> company_db`):
 
 ```sql
-CREATE TABLE customers\_dhaka (
+CREATE TABLE customers_dhaka (
   id INT PRIMARY KEY,
   name VARCHAR(100),
   region VARCHAR(50),
   email VARCHAR(100)
 );
-INSERT INTO customers\_dhaka VALUES
+INSERT INTO customers_dhaka VALUES
 (1, 'Rafiq Islam', 'Dhaka', 'rafiq@example.com'),
 (2, 'Nusrat Jahan', 'Dhaka', 'nusrat@example.com');
 ```
 
-**On pc2** (`docker exec -it pc2 mysql -u fed\_user -p<db\_password> company\_db`):
+**On pc2** (`docker exec -it pc2 mysql -u fed_user -p<db_password> company_db`):
 
 ```sql
-CREATE TABLE customers\_ctg (
+CREATE TABLE customers_ctg (
   id INT PRIMARY KEY,
   name VARCHAR(100),
   region VARCHAR(50),
   email VARCHAR(100)
 );
-INSERT INTO customers\_ctg VALUES
+INSERT INTO customers_ctg VALUES
 (3, 'Farhan Kabir', 'Chittagong', 'farhan@example.com'),
 (4, 'Sabrina Akter', 'Chittagong', 'sabrina@example.com');
 ```
@@ -195,13 +196,13 @@ INSERT INTO customers\_ctg VALUES
 ### 4.7 Create the FEDERATED link (on pc1, pointing at pc2)
 
 ```sql
-CREATE TABLE customers\_ctg\_link (
+CREATE TABLE customers_ctg_link (
   id INT PRIMARY KEY,
   name VARCHAR(100),
   region VARCHAR(50),
   email VARCHAR(100)
 ) ENGINE=FEDERATED
-CONNECTION='mysql://fed\_user:<db\_password>@pc2:3306/company\_db/customers\_ctg';
+CONNECTION='mysql://fed_user:<db_password>@pc2:3306/company_db/customers_ctg';
 ```
 
 Note the connection string uses the **container name** (`pc2`) and **internal port** (`3306`) — not the host-mapped port.
@@ -209,83 +210,83 @@ Note the connection string uses the **container name** (`pc2`) and **internal po
 ### 4.8 Build the unified view (on pc1)
 
 ```sql
-CREATE VIEW customers\_global AS
-SELECT \* FROM customers\_dhaka
+CREATE VIEW customers_global AS
+SELECT * FROM customers_dhaka
 UNION ALL
-SELECT \* FROM customers\_ctg\_link;
+SELECT * FROM customers_ctg_link;
 ```
 
 ### 4.9 Verify
 
 ```sql
-SELECT \* FROM customers\_global;
+SELECT * FROM customers_global;
 ```
 
 Expected: all 4 rows — 2 stored locally on pc1, 2 fetched live from pc2 in real time.
 
-\---
+---
 
-## 5\. Orders Fragment — Full Setup \& Cross-Node JOIN Demo
+## 5. Orders Fragment — Full Setup \& Cross-Node JOIN Demo
 
 This second fragment is what elevates the demo from a simple `UNION` of two tables into a genuine test of distributed querying: a **JOIN across two physically separate nodes**. `customers` data and `orders` data both stay fragmented (Dhaka vs Chittagong), and we prove a query engine can still relate them correctly as if they lived in one database.
 
 ### 5.1 Create the orders fragment on pc1 (Dhaka orders)
 
 ```
-docker exec -it pc1 mysql -u fed\_user -p<db\_password> company\_db
+docker exec -it pc1 mysql -u fed_user -p<db_password> company_db
 ```
 
 ```sql
-CREATE TABLE orders\_dhaka (
-  order\_id INT PRIMARY KEY,
-  customer\_id INT,
+CREATE TABLE orders_dhaka (
+  order_id INT PRIMARY KEY,
+  customer_id INT,
   amount DECIMAL(10,2)
 );
 
-INSERT INTO orders\_dhaka VALUES
+INSERT INTO orders_dhaka VALUES
 (101, 1, 1500.00),
 (102, 2, 2300.00);
 ```
 
-(`customer\_id` 1 and 2 refer to Rafiq and Nusrat, who live in `customers\_dhaka`.)
+(`customer_id` 1 and 2 refer to Rafiq and Nusrat, who live in `customers_dhaka`.)
 
 ### 5.2 Create the orders fragment on pc2 (Chittagong orders)
 
 ```
-docker exec -it pc2 mysql -u fed\_user -p<db\_password> company\_db
+docker exec -it pc2 mysql -u fed_user -p<db_password> company_db
 ```
 
 ```sql
-CREATE TABLE orders\_ctg (
-  order\_id INT PRIMARY KEY,
-  customer\_id INT,
+CREATE TABLE orders_ctg (
+  order_id INT PRIMARY KEY,
+  customer_id INT,
   amount DECIMAL(10,2)
 );
 
-INSERT INTO orders\_ctg VALUES
+INSERT INTO orders_ctg VALUES
 (201, 3, 1800.00),
 (202, 4, 950.00);
 ```
 
-(`customer\_id` 3 and 4 refer to Farhan and Sabrina, who live in `customers\_ctg`.)
+(`customer_id` 3 and 4 refer to Farhan and Sabrina, who live in `customers_ctg`.)
 
 ### 5.3 Link pc2's orders into pc1 via FEDERATED
 
 Back on pc1:
 
 ```sql
-CREATE TABLE orders\_ctg\_link (
-  order\_id INT PRIMARY KEY,
-  customer\_id INT,
+CREATE TABLE orders_ctg_link (
+  order_id INT PRIMARY KEY,
+  customer_id INT,
   amount DECIMAL(10,2)
 ) ENGINE=FEDERATED
-CONNECTION='mysql://fed\_user:<db\_password>@pc2:3306/company\_db/orders\_ctg';
+CONNECTION='mysql://fed_user:<db_password>@pc2:3306/company_db/orders_ctg';
 ```
 
 Test the link on its own first:
 
 ```sql
-SELECT \* FROM orders\_ctg\_link;
+SELECT * FROM orders_ctg_link;
 ```
 
 Expected: the two Chittagong orders (201, 202), fetched live from pc2.
@@ -295,28 +296,28 @@ Expected: the two Chittagong orders (201, 202), fetched live from pc2.
 Still on pc1:
 
 ```sql
-CREATE VIEW orders\_global AS
-SELECT \* FROM orders\_dhaka
+CREATE VIEW orders_global AS
+SELECT * FROM orders_dhaka
 UNION ALL
-SELECT \* FROM orders\_ctg\_link;
+SELECT * FROM orders_ctg_link;
 ```
 
 Test it:
 
 ```sql
-SELECT \* FROM orders\_global;
+SELECT * FROM orders_global;
 ```
 
 Expected: all 4 orders (101, 102, 201, 202) — 2 physically local, 2 pulled from pc2.
 
 ### 5.5 The cross-node JOIN — customers + orders together
 
-This is the real test: joining `customers\_global` (itself already spanning 2 nodes) with `orders\_global` (also spanning 2 nodes):
+This is the real test: joining `customers_global` (itself already spanning 2 nodes) with `orders_global` (also spanning 2 nodes):
 
 ```sql
-SELECT c.name, c.region, o.order\_id, o.amount
-FROM customers\_global c
-JOIN orders\_global o ON c.id = o.customer\_id
+SELECT c.name, c.region, o.order_id, o.amount
+FROM customers_global c
+JOIN orders_global o ON c.id = o.customer_id
 ORDER BY c.id;
 ```
 
@@ -324,7 +325,7 @@ Expected output:
 
 ```
 +---------------+-------------+----------+---------+
-| name          | region      | order\_id | amount  |
+| name          | region      | order_id | amount  |
 +---------------+-------------+----------+---------+
 | Rafiq Islam   | Dhaka       | 101      | 1500.00 |
 | Nusrat Jahan  | Dhaka       | 102      | 2300.00 |
@@ -338,9 +339,9 @@ Every row here is correctly matched even though the underlying `customer` and `o
 ### 5.6 Aggregate query across fragments
 
 ```sql
-SELECT region, SUM(amount) AS total\_sales
-FROM customers\_global c
-JOIN orders\_global o ON c.id = o.customer\_id
+SELECT region, SUM(amount) AS total_sales
+FROM customers_global c
+JOIN orders_global o ON c.id = o.customer_id
 GROUP BY region;
 ```
 
@@ -348,7 +349,7 @@ Expected output:
 
 ```
 +-------------+-------------+
-| region      | total\_sales |
+| region      | total_sales |
 +-------------+-------------+
 | Dhaka       | 3800.00     |
 | Chittagong  | 2750.00     |
@@ -361,19 +362,19 @@ This shows region-level totals computed from data that was never physically stor
 
 ```sql
 -- INSERT: lands on pc2, not pc1
-INSERT INTO orders\_ctg\_link VALUES (203, 4, 500.00);
+INSERT INTO orders_ctg_link VALUES (203, 4, 500.00);
 
 -- UPDATE: modifies the row on pc2
-UPDATE orders\_ctg\_link SET amount = 600.00 WHERE order\_id = 203;
+UPDATE orders_ctg_link SET amount = 600.00 WHERE order_id = 203;
 
 -- DELETE: removes the row from pc2
-DELETE FROM orders\_ctg\_link WHERE order\_id = 203;
+DELETE FROM orders_ctg_link WHERE order_id = 203;
 ```
 
 Verify any of these directly on pc2 to confirm the write actually happened remotely:
 
 ```
-docker exec -it pc2 mysql -u fed\_user -p<db\_password> company\_db -e "SELECT \* FROM orders\_ctg;"
+docker exec -it pc2 mysql -u fed_user -p<db_password> company_db -e "SELECT * FROM orders_ctg;"
 ```
 
 ### 5.8 Fault-tolerance check (demonstrating a real limitation)
@@ -385,10 +386,10 @@ docker stop pc2
 Then on pc1:
 
 ```sql
-SELECT \* FROM orders\_global;
+SELECT * FROM orders_global;
 ```
 
-This will **error out** on the `orders\_ctg\_link` portion — proving FEDERATED has no replication or failover; if the remote node is down, that fragment is simply unavailable. Restart pc2 afterward:
+This will **error out** on the `orders_ctg_link` portion — proving FEDERATED has no replication or failover; if the remote node is down, that fragment is simply unavailable. Restart pc2 afterward:
 
 ```
 docker start pc2
@@ -398,13 +399,13 @@ docker start pc2
 
 ```sql
 EXPLAIN SELECT c.name, o.amount
-FROM customers\_global c
-JOIN orders\_global o ON c.id = o.customer\_id;
+FROM customers_global c
+JOIN orders_global o ON c.id = o.customer_id;
 ```
 
 Shows how the optimizer treats the FEDERATED-backed portions differently from purely local tables — useful talking point on distributed query cost.
 
-\---
+---
 
 ## 6. Errors Encountered & Solutions (Full Troubleshooting Log)
 
@@ -489,7 +490,7 @@ docker exec -it pc2 mysql -u fed_user -p company_db -e "SELECT * FROM customers_
 
 - **Cause:** Windows file permissions on the mounted configuration file are more permissive than Linux expects.
 - **Solution:** This warning is harmless and can be ignored because the FEDERATED engine is enabled using `INSTALL SONAME`, not through the configuration file.
-## 7\. Key Command Reference (Cheat Sheet)
+## 7. Key Command Reference (Cheat Sheet)
 
 ```
 # Container lifecycle
@@ -501,27 +502,26 @@ docker ps                     # check running containers
 docker-compose logs pc1       # view logs if a container misbehaves
 
 # Connecting
-docker exec -it pc1 mysql -u root -p<root\_password>                     # root session
-docker exec -it pc1 mysql -u fed\_user -p<db\_password> company\_db   # app-user session
-docker exec -it pc2 mysql -u fed\_user -p<db\_password> company\_db -e "SELECT ...;"  # one-shot query
+docker exec -it pc1 mysql -u root -p<root_password>                     # root session
+docker exec -it pc1 mysql -u fed_user -p<db_password> company_db   # app-user session
+docker exec -it pc2 mysql -u fed_user -p<db_password> company_db -e "SELECT ...;"  # one-shot query
 
 # Inside MariaDB
 \\c        # clear a stuck/incomplete statement
 exit;     # leave MariaDB, return to Windows Command Prompt
 ```
 
-\---
+---
 
-## 8\. Limitations of This Setup (worth noting in any write-up/viva)
+## 8. Limitations of This Setup (worth noting in any write-up/viva)
 
-* **No fault tolerance** — if pc2 goes down, queries touching `customers\_ctg\_link` fail outright; there's no failover or replica to fall back on.
+* **No fault tolerance** — if pc2 goes down, queries touching `customers_ctg_link` fail outright; there's no failover or replica to fall back on.
 * **No distributed transactions** — a multi-node write isn't atomic; if a failure happens mid-operation, there's no two-phase commit to roll everything back consistently.
 * **Performance** — every FEDERATED query round-trips over the network to the remote node; no query optimization pushes filters down efficiently in all cases.
 * **FederatedX itself is a deprecated/legacy engine** in current MariaDB — fine for learning fragmentation concepts, but MariaDB's own docs point to the newer **SPIDER** or **CONNECT** engines for anything production-oriented.
 
-\---
+---
 
-## 9\. Summary
+## 9. Summary
 
-This lab successfully demonstrates the core distributed database concept of **horizontal fragmentation with transparency**: two independently running MariaDB nodes (in Docker containers) each hold a different slice of a logical `customers` table, linked via the FederatedX storage engine, and unified into a single queryable view (`customers\_global`). A client querying that view cannot tell — and doesn't need to know — that half the data lives on a completely separate server.
-
+This lab successfully demonstrates the core distributed database concept of **horizontal fragmentation with transparency**: two independently running MariaDB nodes (in Docker containers) each hold a different slice of a logical `customers` table, linked via the FederatedX storage engine, and unified into a single queryable view (`customers_global`). A client querying that view cannot tell — and doesn't need to know — that half the data lives on a completely separate server.
